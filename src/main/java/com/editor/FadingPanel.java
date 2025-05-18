@@ -28,5 +28,6 @@ class FadingPanel extends JPanel {
     g2d.dispose();
     super.paintComponent(g);
   }
+
 }
 

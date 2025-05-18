@@ -1,10 +1,6 @@
 package com.editor;
 
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseMotionAdapter;
@@ -15,10 +11,12 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.Vector;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 
 public class DatabasePanel extends JPanel {
-  private Timer fadeInTimer;
-  private Timer fadeOutTimer;
 
   private JComboBox<DatabaseManager.DatabaseType> databaseSelector;
   private JComboBox<String> tableSelector;
@@ -26,9 +24,6 @@ public class DatabasePanel extends JPanel {
   private DefaultTableModel model;
   private Connection connection;
 
-  private JPanel loadingOverlay;
-  private JLabel loadingLabel;
-  private JProgressBar spinnerBar;
   public enum FontStyle {
     REGULAR, BOLD, ITALIC, SEMIBOLD
   }
@@ -150,41 +145,41 @@ public class DatabasePanel extends JPanel {
 
     layeredPane.add(contentPanel, JLayeredPane.DEFAULT_LAYER);
 
-    loadingOverlay = new FadingPanel();
-    loadingOverlay.setLayout(new GridBagLayout());
-    loadingOverlay.setBackground(new Color(0, 0, 0, 240));
-    ((FadingPanel) loadingOverlay).setAlpha(0f);
-    loadingOverlay.setVisible(false);
+    Loader.loadingOverlay = new FadingPanel();
+    Loader.loadingOverlay.setLayout(new GridBagLayout());
+    Loader.loadingOverlay.setBackground(new Color(0, 0, 0, 240));
+    ((FadingPanel) Loader.loadingOverlay).setAlpha(0f);
+    Loader.loadingOverlay.setVisible(false);
 
     // Block mouse input to everything behind the overlay
-    loadingOverlay.addMouseListener(new MouseAdapter() {});
-    loadingOverlay.addMouseMotionListener(new MouseMotionAdapter() {});
-    loadingOverlay.setFocusable(true);
-    loadingOverlay.requestFocusInWindow();
+    Loader.loadingOverlay.addMouseListener(new MouseAdapter() {});
+    Loader.loadingOverlay.addMouseMotionListener(new MouseMotionAdapter() {});
+    Loader.loadingOverlay.setFocusable(true);
+    Loader.loadingOverlay.requestFocusInWindow();
 
-    loadingLabel = new JLabel("Loading...");
-    loadingLabel.setForeground(Color.WHITE);
-    loadingLabel.setFont(getJetBrainsFont(FontStyle.BOLD, 40));
-    spinnerBar = new JProgressBar();
-    spinnerBar.setIndeterminate(true);
-    spinnerBar.setPreferredSize(new Dimension(250, 50));
-    spinnerBar.setForeground(new Color(166, 0, 0));
-    spinnerBar.setBorderPainted(false);
-    spinnerBar.setOpaque(false);
+    Loader.loadingLabel = new JLabel("Loading...");
+    Loader.loadingLabel.setForeground(Color.WHITE);
+    Loader.loadingLabel.setFont(getJetBrainsFont(FontStyle.BOLD, 40));
+    Loader.spinnerBar = new JProgressBar();
+    Loader.spinnerBar.setIndeterminate(true);
+    Loader.spinnerBar.setPreferredSize(new Dimension(250, 50));
+    Loader.spinnerBar.setForeground(new Color(166, 0, 0));
+    Loader.spinnerBar.setBorderPainted(false);
+    Loader.spinnerBar.setOpaque(false);
 
     JPanel loadingBox = new JPanel();
     loadingBox.setLayout(new BoxLayout(loadingBox, BoxLayout.Y_AXIS));
     loadingBox.setOpaque(false);
 
-    loadingLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-    spinnerBar.setAlignmentX(Component.CENTER_ALIGNMENT);
+    Loader.loadingLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    Loader.spinnerBar.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-    loadingBox.add(loadingLabel);
+    loadingBox.add(Loader.loadingLabel);
     loadingBox.add(Box.createVerticalStrut(10));
-    loadingBox.add(spinnerBar);
+    loadingBox.add(Loader.spinnerBar);
 
-    loadingOverlay.add(loadingBox);
-    layeredPane.add(loadingOverlay, JLayeredPane.PALETTE_LAYER);
+    Loader.loadingOverlay.add(loadingBox);
+    layeredPane.add(Loader.loadingOverlay, JLayeredPane.PALETTE_LAYER);
 
     addComponentListener(new java.awt.event.ComponentAdapter() {
       @Override
@@ -192,7 +187,7 @@ public class DatabasePanel extends JPanel {
         Dimension size = getSize();
 
         layeredPane.setBounds(0, 0, size.width, size.height);
-        loadingOverlay.setBounds(0, 0, size.width, size.height);
+        Loader.loadingOverlay.setBounds(0, 0, size.width, size.height);
         contentPanel.setBounds(0, 0, size.width, size.height);
 
         // Force layout update and repaint
@@ -214,49 +209,6 @@ public class DatabasePanel extends JPanel {
     saveBtn.addActionListener(e -> runAsync(() -> saveChanges(), "Saving Changes..."));
     addRowBtn.addActionListener(e -> addRowToTable());
     deleteRowBtn.addActionListener(e -> deleteSelectedRow());
-  }
-  private void fadeInOverlay() {
-    if (fadeOutTimer != null && fadeOutTimer.isRunning()) {
-      fadeOutTimer.stop();
-    }
-    if (fadeInTimer != null && fadeInTimer.isRunning()) {
-      return; // Already fading in
-    }
-
-    loadingOverlay.setVisible(true);
-    fadeInTimer = new Timer(15, null);
-    fadeInTimer.addActionListener(e -> {
-      float alpha = ((FadingPanel) loadingOverlay).getAlpha();
-      if (alpha < 1f) {
-        ((FadingPanel) loadingOverlay).setAlpha(Math.min(1f, alpha + 0.05f));
-      } else {
-        ((FadingPanel) loadingOverlay).setAlpha(1f);
-        fadeInTimer.stop();
-      }
-    });
-    fadeInTimer.start();
-  }
-
-  private void fadeOutOverlay() {
-    if (fadeInTimer != null && fadeInTimer.isRunning()) {
-      fadeInTimer.stop();
-    }
-    if (fadeOutTimer != null && fadeOutTimer.isRunning()) {
-      return; // Already fading out
-    }
-
-    fadeOutTimer = new Timer(15, null);
-    fadeOutTimer.addActionListener(e -> {
-      float alpha = ((FadingPanel) loadingOverlay).getAlpha();
-      if (alpha > 0f) {
-        ((FadingPanel) loadingOverlay).setAlpha(Math.max(0f, alpha - 0.05f));
-      } else {
-        ((FadingPanel) loadingOverlay).setAlpha(0f);
-        loadingOverlay.setVisible(false);
-        fadeOutTimer.stop();
-      }
-    });
-    fadeOutTimer.start();
   }
 
   private void applyDarkTheme() {
@@ -325,7 +277,7 @@ public class DatabasePanel extends JPanel {
         loadSelectedTable();
         SwingUtilities.invokeLater(() -> {
           showStatusOverlay("Connected successfully!", new Color(0x00FF66)); // Green
-          Timer timer = new Timer(0, e -> hideLoadingOverlay());
+          Timer timer = new Timer(0, e -> Loader.hideLoadingOverlay());
           timer.setRepeats(false);
           timer.start();
         });
@@ -337,7 +289,7 @@ public class DatabasePanel extends JPanel {
 
       SwingUtilities.invokeLater(() -> {
         showStatusOverlay("Failed to connect.", new Color(0xFF0000)); // Green
-        Timer timer = new Timer(0, e -> hideLoadingOverlay());
+        Timer timer = new Timer(0, e -> Loader.hideLoadingOverlay());
         timer.setRepeats(false);
         timer.start();
       });
@@ -345,13 +297,13 @@ public class DatabasePanel extends JPanel {
   }
 
   private void showStatusOverlay(String message, Color textColor) {
-    loadingLabel.setText(message);
-    loadingLabel.setFont(getJetBrainsFont(FontStyle.BOLD, 40));
-    loadingLabel.setForeground(textColor);
-    spinnerBar.setVisible(false); // Hide spinner for success/info messages
-    loadingOverlay.setBackground(new Color(0, 0, 0, 240)); // Black with opacity
-    loadingOverlay.setBounds(0, 0, getWidth(), getHeight());
-    fadeInOverlay();
+    Loader.loadingLabel.setText(message);
+    Loader.loadingLabel.setFont(getJetBrainsFont(FontStyle.BOLD, 40));
+    Loader.loadingLabel.setForeground(textColor);
+    Loader.spinnerBar.setVisible(false); // Hide spinner for success/info messages
+    Loader.loadingOverlay.setBackground(new Color(0, 0, 0, 240)); // Black with opacity
+    Loader.loadingOverlay.setBounds(0, 0, getWidth(), getHeight());
+    Loader.fadeInOverlay();
   }
 
   private void loadSelectedTable() {
@@ -381,7 +333,7 @@ public class DatabasePanel extends JPanel {
       model.setDataVector(data, cols);
       SwingUtilities.invokeLater(() -> {
         showStatusOverlay("Table Loaded!", new Color(0x00FF66)); // Green
-        Timer timer = new Timer(0, e -> hideLoadingOverlay());
+        Timer timer = new Timer(0, e -> Loader.hideLoadingOverlay());
         timer.setRepeats(false);
         timer.start();
       });
@@ -391,7 +343,7 @@ public class DatabasePanel extends JPanel {
       SwingUtilities.invokeLater(() -> {
         showStatusOverlay("Failed to load table.", new Color(0xFF0000)); // Green
 
-        Timer timer = new Timer(0, e -> hideLoadingOverlay());
+        Timer timer = new Timer(0, e -> Loader.hideLoadingOverlay());
         timer.setRepeats(false);
         timer.start();
       });
@@ -433,7 +385,7 @@ public class DatabasePanel extends JPanel {
       // Now show success message (after task finishes)
       SwingUtilities.invokeLater(() -> {
         showStatusOverlay("Changes Saved!", new Color(0x00FF66)); // Green
-        Timer timer = new Timer(0, e -> hideLoadingOverlay());
+        Timer timer = new Timer(0, e -> Loader.hideLoadingOverlay());
         timer.setRepeats(false);
         timer.start();
       });
@@ -442,42 +394,21 @@ public class DatabasePanel extends JPanel {
       ex.printStackTrace();
       SwingUtilities.invokeLater(() -> {
         showStatusOverlay("Failed to save changes.", new Color(0xFF0000)); // Green
-        Timer timer = new Timer(0, e -> hideLoadingOverlay());
+        Timer timer = new Timer(0, e -> Loader.hideLoadingOverlay());
         timer.setRepeats(false);
         timer.start();
       });
     }
   }
 
-
-
-
-  private void showLoadingOverlay(String message) {
-    loadingLabel.setText(message);
-    loadingLabel.setForeground(new Color(0xFFFFFF));
-
-    boolean showSpinner = message.toLowerCase().contains("loading") ||
-                          message.toLowerCase().contains("connecting") ||
-                          message.toLowerCase().contains("saving");
-    if (spinnerBar != null) {
-      spinnerBar.setVisible(showSpinner);
-    }
-    loadingOverlay.setBounds(0, 0, getWidth(), getHeight());
-    fadeInOverlay();
-  }
-
-  private void hideLoadingOverlay() {
-    fadeOutOverlay();
-  }
-
   private void runAsync(Runnable task, String loadingMessage, boolean autoHide) {
     new Thread(() -> {
-      SwingUtilities.invokeLater(() -> showLoadingOverlay(loadingMessage));
+      SwingUtilities.invokeLater(() -> Loader.showLoadingOverlay(loadingMessage));
       try {
         task.run();
       } finally {
         if (autoHide) {
-          SwingUtilities.invokeLater(this::hideLoadingOverlay);
+          SwingUtilities.invokeLater(Loader::hideLoadingOverlay);
         }
       }
     }).start();
@@ -487,5 +418,4 @@ public class DatabasePanel extends JPanel {
   private void runAsync(Runnable task, String loadingMessage) {
     runAsync(task, loadingMessage, true);
   }
-
 }

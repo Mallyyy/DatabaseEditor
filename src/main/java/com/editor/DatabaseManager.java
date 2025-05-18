@@ -26,9 +26,9 @@ public class DatabaseManager {
     public String getDbName() { return dbName; }
   }
 
-  private static final String HOST = "";
-  private static final String USER = "";
-  private static final String PASSWORD = "";
+  private static final String HOST = "198.12.15.138";
+  private static final String USER = "morpheu3_admin";
+  private static final String PASSWORD = "morpheusadmin123";
 
   private static final Map<DatabaseType, HikariDataSource> POOLS = new EnumMap<>(DatabaseType.class);
 
